@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>КАТАЛОГ МАШИН</title>
+<meta charset="utf-8" />
+</head>
+<body>
+
+<h2>КАТАЛОГ МАШИН</h2>
+
+<?php
+// List of new and used cars
+try {
+    $conn = new PDO("mysql:host={{ ip_address['database-1'] }};port={{ mysql_port }};dbname={{ db_name }}", "{{ mysql_php_user }}", "{{ mysql_php_password }}");
+    $tbs = "SHOW TABLES";
+    $tbarray = $conn->query($tbs);
+    while($tb = $tbarray->fetch()){
+    echo "<h3>Список " . $tb["0"] . " машин</h3>";
+    echo "<table><tr><th>#</th><th>Марка</th><th>Год</th><th>Цена</th></tr>";
+    $sql = "SELECT * FROM $tb[0]";
+    $result = $conn->query($sql);
+    $count = 1;
+    while($row = $result->fetch()){
+        echo "<tr>";
+            echo "<td>" . $count . "</td>";
+            echo "<td>" . $row["name"] . "</td>";
+            echo "<td>" . $row["year"] . "</td>";
+            echo "<td>" . $row["price"] . "</td>";
+            //echo "<td><a href='update.php?tb=" . $tb["0"] . "&id=" . $row["id"] . "'>Edit</a></td>";
+            echo "<td><form action='update.php' method='get'>
+                <input type='hidden' name='tb' value='" . $tb["0"] . "' />
+                <input type='hidden' name='id' value='" . $row["id"] . "' />
+                <input type='submit' value='Правка...' />
+                </form></td>";
+            echo "<td><form action='delete.php' method='post'>
+                <input type='hidden' name='tb' value='" . $tb["0"] . "' />
+                <input type='hidden' name='id' value='" . $row["id"] . "' />
+                <input type='submit' value='Удалить'>
+                </form></td>";
+        echo "</tr>";
+        $count++;
+    }
+    echo "</table>";
+    }
+}
+catch (PDOException $e) {
+    echo "Database error: " . $e->getMessage();
+}
+?>
+
+<hr />
+
+<h3>Добавить машину:</h3>
+<form action="add.php" method="post">
+    <p><label for="tb">Новая или с пробегом:</label>
+    <select id="cars" name="tb">
+    <option value="new">новая</option>
+    <option value="used">с пробегом</option>
+    </select></p>
+    <p>Марка:
+    <input type="text" name="name" /></p>
+    <p>Год выпуска:
+    <input type="year" name="year" /></p>
+    <p>Price:
+    <input type="number" name="price" /></p>
+    <input type="submit" value="Добавить" />
+</form>
+
+</body>
+</html>

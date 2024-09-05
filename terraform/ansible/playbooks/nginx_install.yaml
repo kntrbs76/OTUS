@@ -1,0 +1,20 @@
+---
+- name: Install NGNIX
+  hosts: all
+  become: yes
+
+  tasks:
+    - name: Update packet list
+      apt:
+        update_cache: yes
+
+    - name: Install NGNIX
+      apt:
+        name: nginx
+        state: present
+
+    - name: NGNIX Enabled, Autostart
+      systemd:
+        name: nginx
+        state: started
+        enabled: yes
