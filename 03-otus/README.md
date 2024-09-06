@@ -1,4 +1,4 @@
-## lab-02
+## lab-03
 otus | nginx - setting up web application balancing
 
 ### Домашнее задание
