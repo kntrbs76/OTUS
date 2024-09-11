@@ -14,8 +14,11 @@
 
 terraform apply -auto-approve
 ![07.png](screens/07.png)
+
 Переходим в папку ansible  и запускаем плейбук
+
 ansible-playbook main.yml -e ntp_timezone=Europe/Moscow -e "newpassword=qwerty12345"
+
 ------------------------------------------------------------------------
 После успешной настройки можно увидить состояние кластера:
 ![01.png](screens/01.png)
