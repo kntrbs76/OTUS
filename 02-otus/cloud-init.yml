@@ -1,0 +1,8 @@
+#cloud-config
+ssh_pwauth: no
+users:
+  - name: kntrbs
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    ssh-authorized-keys:
+      - "ssh-rsa **************f6zPqPL+Y9J7pYqMjnYZ4y5ClyxqtpCQHRw== **********x.ru"
