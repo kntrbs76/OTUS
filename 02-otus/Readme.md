@@ -14,7 +14,7 @@
 
 terraform apply -auto-approve
 ------------------------------------------
-terraform apply -auto-approve
+`terraform apply -auto-approve
 
 Terraform used the selected providers to generate the following execution plan. Resource actions are indicated with the following symbols:
   + create
@@ -765,7 +765,7 @@ internal_ip_address_pcs-servers = [
     "10.160.0.22",
     "10.160.0.35",
   ],
-]
+]`
 -------------------------------------------------------------------------
 ![07.png](screens/07.png)
 Переходим в папку ansible  и запускаем плейбук
