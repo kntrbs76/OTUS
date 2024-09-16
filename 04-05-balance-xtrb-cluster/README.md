@@ -28,15 +28,16 @@
 
 ### Как поднять стенд?
 
-sudo su -
-mkdir /etc/vbox/
-cd /etc/vbox/
-echo '* 0.0.0.0/0 ::/0' > /etc/vbox/networks.conf
-chmod 644 /etc/vbox/networks.conf
+>sudo su - <br>
+mkdir /etc/vbox/ <br>
+cd /etc/vbox/ <br>
+echo '* 0.0.0.0/0 ::/0' > /etc/vbox/networks.conf<br>
+chmod 644 /etc/vbox/networks.conf<br>
 
-В Vagrantfile - добавлен
-ENV['VAGRANT_SERVER_URL'] = 'https://vagrant.elab.pro'
-config.vm.provision 
+В Vagrantfile - добавлен <br>
+**ENV['VAGRANT_SERVER_URL'] = 'https://vagrant.elab.pro'**
+
+**config.vm.provision** 
 поменять путь до своего ssh ключа
 
 Исправлены репозитории Centos7 на рабочие.
