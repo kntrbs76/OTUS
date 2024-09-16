@@ -1,0 +1,17 @@
+- name: Enable and restart php-fpm
+  systemd:
+    name: php-fpm
+    enabled: yes
+    state: restarted
+
+- name: Enable and restart Nginx
+  systemd:
+    name: nginx
+    enabled: yes
+    state: restarted
+
+- name: Enable and restart Keepalived
+  systemd:
+    name: keepalived
+    enabled: yes
+    state: restarted

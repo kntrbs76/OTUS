@@ -1,0 +1,5 @@
+domain: "domain.local"
+ntp_timezone: "UTC"
+mysql_root_password: "Otus_1234567"
+mysql_host_allowed: '%'
+pxc_node_db2: "10.0.0.14"

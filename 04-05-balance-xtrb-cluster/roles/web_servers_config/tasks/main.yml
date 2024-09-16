@@ -1,0 +1,165 @@
+---
+- meta: end_play
+  when: (ansible_distribution != "CentOS" and ansible_distribution_major_version != "7")
+
+- name: Add Remi7 PHP-repository for Centos7
+  yum:
+    name: http://rpms.remirepo.net/enterprise/remi-release-7.rpm
+    state: present
+
+- name: Enable Remi7 repository
+  lineinfile:
+    path: /etc/yum.repos.d/remi-php74.repo
+    regexp: '^enabled='
+    firstmatch: yes
+    line: enabled=1
+
+- name: Install required packages for WEB servers
+  yum:
+    name: "{{ packages }}"
+    state: present
+  vars:
+    packages:
+    - keepalived
+    - nginx
+    - php
+    - php-fpm
+    - php-mysql
+    - php-mysqlnd
+    - php-gd
+    - php-intl
+    - php-mbstring
+    - php-soap
+    - php-xml
+    - php-xmlrpc
+    - php-zip
+    - php-common
+    - php-opcache
+    - php-mcrypt
+    - php-cli
+    - php-gd
+    - php-curl
+  notify: Enable and restart php-fpm
+
+- name: Backup original keepalived config files
+  copy:
+    src: /etc/keepalived/keepalived.conf
+    remote_src: yes
+    dest: /etc/keepalived/keepalived.conf.orig
+    owner: root
+    group: root
+    mode: 0644
+
+- name: Delete original keepalived config files
+  file:
+    path: /etc/keepalived/keepalived.conf
+    state: absent
+
+- name: Configuring keepalived on the node1
+  blockinfile:
+    path: /etc/keepalived/keepalived.conf
+    create: yes
+    block: |
+      vrrp_instance VI_1 {
+        state MASTER
+        interface eth1
+        virtual_router_id 51
+        priority 255
+        advert_int 1
+        authentication {
+              auth_type PASS
+              auth_pass 12345
+        }
+        virtual_ipaddress {
+              192.168.100.100/24
+        }
+      }
+  when: (inventory_hostname == "node1")
+  notify: Enable and restart Keepalived
+
+- name: Configuring keepalived on the node2
+  blockinfile:
+    path: /etc/keepalived/keepalived.conf
+    create: yes
+    block: |
+      vrrp_instance VI_1 {
+        state BACKUP
+        interface eth1
+        virtual_router_id 51
+        priority 254
+        advert_int 1
+        authentication {
+              auth_type PASS
+              auth_pass 12345
+        }
+        virtual_ipaddress {
+              192.168.100.100/24
+        }
+      }
+  when: (inventory_hostname == "node2")
+  notify: Enable and restart Keepalived
+
+#- name: Delete default NGINX index.html
+#  file:
+#    path: /usr/share/nginx/html/index.html
+#    state: absent
+
+#- name: Configuring custom NGINX page for node1
+#  lineinfile:
+#    path: /usr/share/nginx/html/index.html
+#    line: <h1>This is NGINX Web Server from Node 1</h1>
+#    create: yes
+#  when: (inventory_hostname == "node1")
+#  notify: Enable and restart Nginx
+
+#- name: Configuring custom NGINX page for node2
+#  lineinfile:
+#    path: /usr/share/nginx/html/index.html
+#    line: <h1>This is NGINX Web Server from Node 2</h1>
+#    create: yes
+#  when: (inventory_hostname == "node2")
+#  notify: Enable and restart Nginx
+
+- name: Download and install Wordpress
+  unarchive:
+    src: https://wordpress.org/latest.tar.gz
+    dest: /usr/share/nginx/html
+    remote_src: yes
+
+- name: Insert configured wp-config.php
+  copy:
+    src: wp-config.php
+    dest: /usr/share/nginx/html/wordpress/wp-config.php
+
+- name: Set owner for Wordpress directory
+  file:
+    path: /usr/share/nginx/html/wordpress
+    owner: nginx
+    group: nginx
+    state: directory
+    recurse: yes
+    mode: 0755
+
+- name: Backup default nginx.comf
+  copy:
+    src: /etc/nginx/nginx.conf
+    dest: /etc/nginx/nginx.conf.orig
+    remote_src: yes
+  
+- name: Delete default nginx.conf
+  file:
+    path: /etc/nginx/nginx.conf
+    state: absent
+
+- name: Insert configured nginx.conf
+  copy:
+    src: nginx.conf
+    dest: /etc/nginx/nginx.conf
+  notify: Enable and restart Nginx
+
+#- name: Restart NGINX for apply new nginx.conf
+#  systemd:
+#    name: nginx
+#    state: restarted
+
+

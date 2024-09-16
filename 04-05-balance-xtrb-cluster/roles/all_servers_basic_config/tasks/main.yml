@@ -1,0 +1,80 @@
+---
+- meta: end_play
+  when: (ansible_distribution != "CentOS" and ansible_distribution_major_version != "7")
+
+- name: Disable SELinux
+  selinux:
+    state: disabled
+
+- name: Stop and disable Network Manager
+  systemd:
+    name: NetworkManager
+    enabled: no
+    state: stopped
+
+- name: "Del repo dir"
+  ansible.builtin.file:
+    state: absent
+    path: /etc/yum.repos.d/*
+
+- name: "add new repo centos"
+  ansible.builtin.copy:
+    src: ../files/centos7.repo
+    dest: /etc/yum.repos.d/
+    owner: root
+    group: root
+    mode: '0644'
+    backup: yes
+
+- name: Install epel
+  shell: rm -f /etc/yum.repos.d/CentOS-* && yum install -y epel-release
+
+- name: Install required software
+  yum:
+    name: "{{ packages }}"
+    state: present
+  vars:
+    packages:
+    - epel-release
+    - yum-utils
+
+- name: Install python2-PyMySQL
+  yum:
+    name: "{{ packages }}"
+    state: present
+  vars:
+    packages:
+    - python2-PyMySQL
+    - python2-cryptography #for work with MySQL 8+ versions with sha256_password or caching_sha2_password
+  when: (ansible_hostname == "db2")
+
+- name: Set hostname
+  hostname: 
+    name: "{{ ansible_hostname }}.{{ domain }}"
+
+- name: Add my own IP address to /etc/hosts instead localhost
+  replace:
+    path: "/etc/hosts"
+    regexp: '^127\.0\.1\.1(\s+){{ ansible_hostname }}(\s+){{ ansible_hostname }}.*'
+    replace: "{{ ansible_host }} {{ ansible_hostname }}.{{ domain }} {{ ansible_hostname }}"
+
+- name: Add db1 to /etc/hosts
+  lineinfile:
+    path: "/etc/hosts"
+    state: present
+    line: "10.0.0.13 db1.{{ domain }} db1"
+  when: (ansible_hostname != "db1")
+
+- name: Add db2 to /etc/hosts
+  lineinfile:
+    path: "/etc/hosts"
+    state: present
+    line: "10.0.0.14 db2.{{ domain }} db2"
+  when: (ansible_hostname != "db2")
+
+- name: Add db3 to /etc/hosts
+  lineinfile:
+    path: "/etc/hosts"
+    state: present
+    line: "10.0.0.15 db3.{{ domain }} db3"
+  when: (ansible_hostname != "db3")

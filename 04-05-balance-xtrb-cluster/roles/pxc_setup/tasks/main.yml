@@ -1,0 +1,157 @@
+---
+- meta: end_play
+  when: (ansible_distribution != "CentOS" and ansible_distribution_major_version != "7")
+
+- name: Add Percona repository
+  yum:
+    name: https://repo.percona.com/yum/percona-release-latest.noarch.rpm
+    state: present
+
+- name: Enable repository for pxc-80 and tools
+  shell: |
+    percona-release enable-only pxc-80 release
+    percona-release enable tools release
+
+- name: Install PXC (Percona XtraDB Cluster)
+  yum:
+    name: percona-xtradb-cluster
+    state: present
+  #notify: Enable and start MySQL
+
+- name: Enable and start MySQL
+  systemd:
+    name: mysqld
+    enabled: yes
+    state: started
+
+- name: Get temp MySQL root password
+  shell: |
+    grep 'A temporary password is generated for root@localhost' /var/log/mysqld.log | awk -F ' ' '{print $(NF)}'
+  register: temp_root_password
+
+- name: Print temp MySQL root password
+  debug:
+    msg: "Temp MySQL root password is: {{ temp_root_password.stdout }}"
+
+- name: Print new MySQL root password (for debugging purposes)
+  debug:
+    msg: "New MySQL root password will be: {{ mysql_root_password }}"
+
+- name: Change root password
+  shell: |
+    mysql --user root --password="{{ temp_root_password.stdout }}" --connect-expired-password --execute="ALTER USER 'root'@'localhost' IDENTIFIED BY '{{ mysql_root_password }}';"
+
+- name: Stop MySQL
+  systemd:
+    name: mysqld
+    state: stopped
+
+- name: Insert configured my.cnf on db1
+  copy:
+    src: pxc1_my.cnf
+    dest: /etc/my.cnf
+    owner: root
+    group: root
+    mode: '0644'
+    #backup: yes
+  when: (ansible_hostname == "db1")
+
+- name: Insert configured my.cnf on db2
+  copy:
+    src: pxc2_my.cnf
+    dest: /etc/my.cnf
+    owner: root
+    group: root
+    mode: '0644'
+    #backup: yes
+  when: (ansible_hostname == "db2")
+
+- name: Insert configured my.cnf on db3
+  copy:
+    src: pxc3_my.cnf
+    dest: /etc/my.cnf
+    owner: root
+    group: root
+    mode: '0644'
+    #backup: yes
+  when: (ansible_hostname == "db3")
+
+- name: Start bootstraping cluster on first node db1
+  systemd:
+    name: mysql@bootstrap.service
+    state: started
+  when: (ansible_hostname == "db1")
+
+- name: Start MySQL on second node db2
+  systemd:
+    name: mysql
+    state: started
+    enabled: yes
+  when: (ansible_hostname == "db2")
+
+- name: Start MySQL on third node db3
+  systemd:
+    name: mysql
+    state: started
+    enabled: yes
+  when: (ansible_hostname == "db3")
+
+- name: Create database for Wordpress  
+  community.mysql.mysql_db:
+    login_unix_socket: /var/lib/mysql/mysql.sock
+    login_user: root
+    login_password: "{{ mysql_root_password }}"
+    name: wp
+    state: present
+  when: (ansible_hostname == "db2")
+
+- name: Allow root to login MySQL from db2
+  shell: |
+    mysql --user root --password="{{ mysql_root_password }}" --execute="use mysql;UPDATE mysql.user SET host='%' WHERE user='root';"
+  when: (ansible_hostname == "db2")
+
+- name: Restart MySQl
+  systemd:
+    name: mysql
+    state: restarted
+  when: (ansible_hostname == "db2")
+
+- name: Create user for wp database
+  mysql_user:
+    login_user: root
+    login_password: "{{ mysql_root_password }}"
+    login_host: 10.0.0.14
+    name: wpuser
+    password: wppassword
+    priv: 'wp.*:ALL,GRANT'
+    host: "{{ mysql_host_allowed }}"
+    state: present
+  when: (ansible_hostname == "db2")
+
+- name: Create user for monitoring PXC by ProxySQL
+  mysql_user:
+    login_user: root
+    login_password: "{{ mysql_root_password }}"
+    login_host: 10.0.0.14
+    name: monitor
+    password: monitor
+    priv: '*.*:ALL,GRANT'
+    host: "{{ mysql_host_allowed }}"
+    state: present
+  when: (ansible_hostname == "db2")
+
+- name: Create user for managing connections to PXC by ProxySQL
+  mysql_user:
+    login_user: root
+    login_password: "{{ mysql_root_password }}"
+    login_host: 10.0.0.14
+    name: manageuser
+    password: managepassword
+    priv: '*.*:ALL,GRANT'
+    host: "{{ mysql_host_allowed }}"
+    state: present
+  when: (ansible_hostname == "db2")
+
+- name: Flush privileges
+  shell: mysql --user root --password={{ mysql_root_password }} --execute "FLUSH PRIVILEGES;"
+  when: (ansible_hostname == "db2")

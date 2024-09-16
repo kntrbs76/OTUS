@@ -1,0 +1,66 @@
+---
+- meta: end_play
+  when: (ansible_distribution != "CentOS" and ansible_distribution_major_version != "7")
+
+- name: Add MySQL repository for CentOS 7
+  yum:
+    name: https://dev.mysql.com/get/mysql80-community-release-el7-1.noarch.rpm
+    state: present
+
+- name: Install MySQL and related packages
+  yum:
+    name: "{{ packages }}"
+    state: present
+  vars:
+    packages:
+    # - mysql-community-devel*
+    - mysql-community-server*
+    - mysql-community-client*
+    - python2-PyMySQL
+
+- name: Enable and start MySQL
+  systemd:
+    name: mysqld
+    enabled: yes
+    state: started
+
+- name: Get temp MySQL root password
+  shell: |
+    grep 'A temporary password is generated for root@localhost' /var/log/mysqld.log | awk -F ' ' '{print $(NF)}'
+  register: temp_root_password
+
+- name: Print temp MySQL root password
+  debug:
+    msg: "Temp MySQL root password is: {{ temp_root_password.stdout }}"
+
+- name: Print new MySQL root password (for debugging purposes)
+  debug:
+    msg: "New MySQL root password will be: {{ mysql_root_password }}"
+
+- name: Change root password
+  shell: |
+    mysql --user root --password="{{ temp_root_password.stdout }}" --connect-expired-password --execute="ALTER USER 'root'@'localhost' IDENTIFIED BY '{{ mysql_root_password }}';"
+
+- name: Create database for Wordpress  
+  community.mysql.mysql_db:
+    login_unix_socket: /var/lib/mysql/mysql.sock
+    login_user: root
+    login_password: "{{ mysql_root_password }}"
+    name: wp
+    state: present
+
+- name: Create user for wp database
+  mysql_user:
+    login_user: root
+    login_password: "{{ mysql_root_password }}"
+    name: wpuser
+    password: wppassword
+    priv: 'wp.*:ALL,GRANT'
+    host: "{{ remote_host }}"
+    state: present
+
+- name: Flush privileges
+  shell: mysql --user root --password={{ mysql_root_password }} --execute "FLUSH PRIVILEGES;"
+
+
+    

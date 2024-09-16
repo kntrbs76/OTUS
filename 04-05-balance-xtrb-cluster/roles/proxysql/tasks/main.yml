@@ -1,0 +1,55 @@
+---
+- meta: end_play
+  when: (ansible_distribution != "CentOS" and ansible_distribution_major_version != "7")
+
+- name: Add ProxySQLv2 repository
+  blockinfile:
+    path: /etc/yum.repos.d/proxysql.repo
+    create: yes
+    block: |
+      [proxysql_repo]
+      name= ProxySQL YUM repository
+      baseurl=https://repo.proxysql.com/ProxySQL/proxysql-2.1.x/centos/\$releasever
+      gpgcheck=1
+      gpgkey=https://repo.proxysql.com/ProxySQL/repo_pub_key 
+
+- name: Install ProxySQLv2 for Percona XtraDB Cluster 8
+  yum:
+    name: "{{ packages }}"
+    state: present
+  vars:
+    packages:
+    - proxysql
+
+- name: Add Percona repository
+  yum:
+    name: https://repo.percona.com/yum/percona-release-latest.noarch.rpm
+    state: present
+
+- name: Enable repository for pxc-80 and tools
+  shell: |
+    percona-release enable-only pxc-80 release
+    percona-release enable tools release
+
+- name: Install PXC (Percona XtraDB Cluster) client
+  yum:
+    name: percona-xtradb-cluster-client
+    state: present
+
+- name: Remove original /etc/proxysql.cnf
+  file: 
+    path: /etc/proxysql.cnf
+    state: absent
+
+- name: Insert configured /etc/proxysql.cnf
+  copy:
+    src: proxysql.cnf
+    dest: /etc/proxysql.cnf
+    owner: proxysql
+    group: proxysql
+    mode: '0640'
+    #backup: yes
+  
+- name: Start ProxySQL with configuration from config file /etc/proxysql.cnf
+  shell: sudo -u proxysql proxysql --initial
+   
