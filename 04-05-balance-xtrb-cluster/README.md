@@ -28,15 +28,16 @@
 
 ### Как поднять стенд?
 
-sudo su -
-mkdir /etc/vbox/
-cd /etc/vbox/
-echo '* 0.0.0.0/0 ::/0' > /etc/vbox/networks.conf
-chmod 644 /etc/vbox/networks.conf
+>sudo su - <br>
+mkdir /etc/vbox/ <br>
+cd /etc/vbox/ <br>
+echo '* 0.0.0.0/0 ::/0' > /etc/vbox/networks.conf<br>
+chmod 644 /etc/vbox/networks.conf<br>
 
-В Vagrantfile - добавлен
-ENV['VAGRANT_SERVER_URL'] = 'https://vagrant.elab.pro'
-config.vm.provision 
+В Vagrantfile - добавлен <br>
+**ENV['VAGRANT_SERVER_URL'] = 'https://vagrant.elab.pro'**
+
+**config.vm.provision** 
 поменять путь до своего ssh ключа
 
 Исправлены репозитории Centos7 на рабочие.
@@ -44,13 +45,13 @@ config.vm.provision
 1. **vagrant up**
 2. **ansible-playbook site.yml**
 
-### Как проверить отказоустойчивость?
------------------- проверка балансировщика-----------------------
+### Как проверить отказоустойчивость?<br>
+------------------ проверка балансировщика-----------------------<br>
 1. Зайти с хост-машины через браузер по адресу http://192.168.100.100
 2. Заполнить 4 поля начальной регистрации Wordpress и нажать внизу кнопку "Install Wordpress"
 3. Зайти в панель управления Wordpress и, например, опубликовать тестовый пост.
-4. Подключиться по ssh к node1: **vagrant ssh node1** и, например, выключить эту ВМ: **shutdown -h now**
------------------ проверка работы db кластера -------------------
+4. Подключиться по ssh к node1: **vagrant ssh node1** и, например, выключить эту ВМ: **shutdown -h now** <br>
+----------------- проверка работы db кластера -------------------<br>
 5. Обновить страницу http://192.168.100.100 на хост-машине и убедиться, что Wordpress по прежнему доступен.
 6. Далее, можно уничтожить, например, одну из нод Percona кластера, выполнив команду **vagrant destroy db1 -f**
 7. Убедиться, что опубликованный ранее пост по прежнему доступен.
