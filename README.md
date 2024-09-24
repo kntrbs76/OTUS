@@ -5,4 +5,5 @@
 02 - gf2 yc<br>
 03 - terraform yandexcloud + Балансировка nginx<br>
 04 - балансировка keepalived vagrant<br>
-05 - кластера xtrdb-cluster+keepalived+web vagrant<br>
+05 - кластер xtrdb-cluster+keepalived+web vagrant<br>
+06 - кластер postgresql+patroni<br>
