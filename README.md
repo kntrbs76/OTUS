@@ -7,3 +7,4 @@
 04 - балансировка keepalived vagrant<br>
 05 - кластер xtrdb-cluster+keepalived+web vagrant<br>
 06 - кластер postgresql+patroni<br>
+07 - ELK, Opensearch<br>
