@@ -1,0 +1,3 @@
+{% for item in groups['kafka_servers'] %}
+server.{{ hostvars[item].myid }}={{ hostvars[item].ansible_host }}:2888:3888
+{% endfor %}
