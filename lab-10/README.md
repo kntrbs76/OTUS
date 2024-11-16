@@ -205,8 +205,6 @@ lbs-info = {
 
 <img src="pics/screen-011.png" alt="screen-011.png" />
 
-<img src="pics/screen-012.png" alt="screen-012.png" />
-
 Список запущенных серверов:
 
 <img src="pics/screen-013.png" alt="screen-013.png" />
