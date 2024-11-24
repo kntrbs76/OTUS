@@ -9,5 +9,6 @@
 06 - кластер postgresql+patroni<br>
 07 - ELK, Opensearch<br>
 08 - kafka<br> <br>
-09 - <br> 
+09 - consul <br> 
 10 - proxmox <br>
+11 - <br>
