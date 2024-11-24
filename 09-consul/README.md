@@ -172,6 +172,7 @@ consul members
 ```
 
 Получим:
+
 ![Screenshot from 2024-11-24 15-08-39.png](pics/Screenshot%20from%202024-11-24%2015-08-39.png)
 
 Следующая команда:
