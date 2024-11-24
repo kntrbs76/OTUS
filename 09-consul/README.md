@@ -175,12 +175,11 @@ consul members
 
 ![Screenshot from 2024-11-24 15-08-39.png](pics/Screenshot%20from%202024-11-24%2015-08-39.png)
 
-Следующая команда:
+Следующая команда выводит список зарегистрированных consul сервисов:
 ```
 consul catalog services
 ```
 
-выводит список зарегистрированных consul сервисов:
 ![Screenshot from 2024-11-24 15-08-59.png](pics/Screenshot%20from%202024-11-24%2015-08-59.png)
 
 DNS Зона прямого просмотра:
