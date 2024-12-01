@@ -12,3 +12,4 @@
 09 - consul <br> 
 10 - proxmox <br>
 11 - salt <br>
+12 - k8s <br>
