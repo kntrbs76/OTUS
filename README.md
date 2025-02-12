@@ -7,9 +7,12 @@
 04 - балансировка keepalived vagrant<br>
 05 - кластер xtrdb-cluster+keepalived+web vagrant<br>
 06 - кластер postgresql+patroni<br>
-07 - ELK, Opensearch<br>
-08 - kafka<br> <br>
+07 - ELK, Opensearch <br>
+08 - kafka<br>
 09 - consul <br> 
 10 - proxmox <br>
 11 - salt <br>
 12 - k8s <br>
+ <br>
+ <br>
+ project - Создание высокодоступной инфраструктуры для web-приложения в Yandex.Cloud
