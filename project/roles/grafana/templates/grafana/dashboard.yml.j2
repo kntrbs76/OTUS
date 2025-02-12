@@ -1,0 +1,10 @@
+# dashboard file managed by ansible
+apiVersion: 1
+
+providers:
+ - name: 'default'
+   orgId: 1
+   folder: 'ansible_managed'
+   type: file
+   options:
+     path: "{{ grafana_dashboard_dir }}"

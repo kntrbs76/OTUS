@@ -1,0 +1,67 @@
+---
+# cp gpg.key /root/
+- name: Copy the GPG key
+  ansible.builtin.copy:
+    src: grafana/gpg.key
+    dest: /root/
+
+# rpm --import https://rpm.grafana.com/gpg.key
+- name: Import the GPG key
+  ansible.builtin.rpm_key:
+    key: /root/gpg.key
+    state: present
+
+# dnf install -y https://dl.grafana.com/oss/release/grafana-10.3.3-1.x86_64.rpm
+- name: Grafana | install grafana package
+  ansible.builtin.dnf:
+    name: "https://dl.grafana.com/oss/release/grafana-{{ grafana_version }}.{{ grafana_arch }}.rpm"
+    state: present
+
+#- name: Update grafana admin user and pass
+#  ansible.builtin.lineinfile:
+#    path: /etc/grafana/grafana.ini
+#    regexp: "{{ item.regexp }}"
+#    line: "{{ item.line }}"
+#  loop:
+#    - { regexp: '^;admin_user = ', line: 'admin_user = {{ grafana_admin_user }}' }
+#    - { regexp: '^;admin_password = ', line: 'admin_password = {{ grafana_admin_pass }}' }
+
+- name: Add shared MySQL database for multiple grafana
+  ansible.builtin.lineinfile:
+    path: /etc/grafana/grafana.ini
+    insertafter: '# Example: mysql:'
+    regexp: '^;url ='
+    line: 'url = mysql://{{ grafana_db_user }}:{{ grafana_db_pass }}@127.0.0.1:6033/{{ grafana_db_name }}'
+    firstmatch: true
+
+# cp grafana/prometheus.yaml.j2 /etc/grafana/provisioning/datasources/prometheus.yaml
+- name: Grafana | template grafana-prometheus config
+  ansible.builtin.template:
+    src: "grafana/{{ item }}.j2"
+    dest: "/etc/grafana/provisioning/datasources/{{ item }}"
+    owner: root
+    group: grafana
+    mode: 0640
+  loop:
+    - prometheus.yml
+    #- database.yml
+
+# systemctl enable --now grafana-server
+- name: Grafana | ensure grafana service is started and enabled in first server
+  ansible.builtin.systemd:
+    daemon_reload: true
+    name: grafana-server
+    state: restarted
+    enabled: true
+  when: inventory_hostname == 'lb-01'
+  ignore_errors: true
+
+# systemctl enable --now grafana-server
+- name: Grafana | ensure grafana service is started and enabled in other servers
+  ansible.builtin.systemd:
+    daemon_reload: true
+    name: grafana-server
+    state: restarted
+    enabled: true
+  when: inventory_hostname != 'lb-01'
+  ignore_errors: true

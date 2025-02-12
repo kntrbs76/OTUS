@@ -1,0 +1,6 @@
+---
+- name: Update openssh-server
+  ansible.builtin.dnf:
+    name:
+      - openssh-server
+    state: latest

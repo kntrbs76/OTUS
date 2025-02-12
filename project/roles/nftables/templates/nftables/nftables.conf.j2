@@ -1,0 +1,131 @@
+#!/usr/sbin/nft -f
+
+flush ruleset
+
+table ip filter {
+{% if inventory_hostname in groups['dbs'] %}
+        chain MYSQL_INP {
+                ip saddr {{ subnet_cidrs }} tcp dport {{ mysql_port }} ct state new counter accept
+                ip saddr {{ subnet_cidrs }} tcp dport 33060 ct state new counter accept
+        }
+        chain PXC_INP {
+                ip saddr {{ subnet_cidrs }} tcp dport { 4444,4567,4568 } ct state new counter accept
+                ip saddr {{ subnet_cidrs }} tcp dport 4567 ct state new counter accept
+        }
+{% endif %}
+{% if inventory_hostname in groups['cephs'] %}
+        chain CEPH_INP {
+                tcp dport { 3300,6789,6800-7300,8443,8765,9283 } ct state new counter accept
+                tcp dport { 6800-7300 } ct state new counter accept
+        }
+        chain CEPH_EXPORTER_INP {
+                tcp dport 9926 ct state new counter accept
+        }
+        chain PROMETHEUS_INP {
+                tcp dport { 9093-9095 } ct state new counter accept
+                udp dport 9094 ct state new counter accept
+        }
+        chain GRAFANA_INP {
+                tcp dport 3000 ct state new counter accept
+        }
+{% endif %}
+{% if inventory_hostname in groups['bes'] %}
+        chain NGINX_INP {
+                tcp dport { 80,8080 } ct state new counter accept
+        }
+        chain PHP_FPM_INP {
+                tcp dport 9000 ct state new counter accept
+        }
+        chain PROXYSQL_INP {
+                ip saddr {{ subnet_cidrs }} tcp dport { 6032,6033 } ct state new counter accept
+        }
+        chain CONSUL_INP {
+                tcp dport { 8300,8301,8302,8500,8600 } ct state new counter accept
+                udp dport { 8301,8302,8600 } ct state new counter accept
+        }
+{% endif %}
+{% if inventory_hostname in groups['lbs'] %}
+        chain NGINX_INP {
+                tcp dport { 80, 443, 8080 } ct state new counter accept
+        }
+        chain CONSUL_INP {
+                tcp dport { 8300,8301,8302,8500,8600 } ct state new counter accept
+                udp dport { 8301,8302,8600 } ct state new counter accept
+        }
+        chain LOGSTASH_INP {
+                tcp dport { 5044, 9600 } ct state new counter accept
+        }
+        chain OPENSEARCH_INP {
+                tcp dport { 9200, 9300 } ct state new counter accept
+        }
+        chain DASHBOARDS_INP {
+                tcp dport 5601 ct state new counter accept
+        }
+        chain PROMETHEUS_INP {
+                tcp dport 9090 ct state new counter accept
+        }
+        chain GRAFANA_INP {
+                tcp dport 3000 ct state new counter accept
+        }
+        chain PROXYSQL_INP {
+                ip saddr {{ subnet_cidrs }} tcp dport { 6032,6033 } ct state new counter accept
+        }
+{% endif %}
+{% if inventory_hostname in groups['consuls'] %}
+        chain CONSUL_INP {
+                tcp dport { 8300,8301,8302,8500,8503,8600 } ct state new counter accept
+                udp dport { 8301,8302,8600 } ct state new counter accept
+        }
+{% endif %}
+        chain NODE_EXPORTER_INP {
+                ip saddr {{ subnet_cidrs }} tcp dport 9100 ct state new counter accept
+        }
+        chain INPUT {
+                type filter hook input priority filter; policy drop;
+                ct state invalid counter drop
+                iifname "lo" counter accept
+                tcp dport 22 ct state new counter accept
+                udp dport 323 counter accept
+                ip saddr {{ subnet_cidrs }} icmp type echo-request counter accept
+                ct state established,related counter accept
+                counter jump NODE_EXPORTER_INP
+{% if inventory_hostname in groups['dbs'] %}
+                counter jump MYSQL_INP
+                counter jump PXC_INP
+{% endif %}
+{% if inventory_hostname in groups['cephs'] %}
+                counter jump CEPH_INP
+                counter jump CEPH_EXPORTER_INP
+                counter jump PROMETHEUS_INP
+                counter jump GRAFANA_INP
+{% endif %}
+{% if inventory_hostname in groups['bes'] %}
+                counter jump NGINX_INP
+                #counter jump PHP_FPM_INP
+                counter jump PROXYSQL_INP
+                counter jump CONSUL_INP
+{% endif %}
+{% if inventory_hostname in groups['lbs'] %}
+                counter jump NGINX_INP
+                counter jump CONSUL_INP
+                counter jump OPENSEARCH_INP
+                counter jump LOGSTASH_INP
+                counter jump DASHBOARDS_INP
+                counter jump PROMETHEUS_INP
+                counter jump GRAFANA_INP
+                counter jump PROXYSQL_INP
+{% endif %}
+{% if inventory_hostname in groups['consuls'] %}
+                counter jump CONSUL_INP
+{% endif %}
+        }
+
+        chain FORWARD {
+                type filter hook forward priority filter; policy drop;
+        }
+
+        chain OUTPUT {
+                type filter hook output priority filter; policy drop;
+                ct state established,related,new counter accept
+        }
+}

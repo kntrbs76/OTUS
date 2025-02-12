@@ -1,0 +1,6 @@
+---
+# Disabling for Amazon Linux 2 as selinux is disabled by default.
+- name: Disable the selinux
+  ansible.posix.selinux:
+    state: disabled
+  when: (ansible_distribution != "Ubuntu") and (ansible_distribution != "Amazon")

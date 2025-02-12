@@ -1,0 +1,14 @@
+---
+# systemctl enable php-fpm --now
+- name: Restart php-fpm
+  ansible.builtin.systemd:
+    name: "php-fpm"
+    state: restarted
+    enabled: yes
+
+# systemctl enable nginx --now
+- name: Restart nginx
+  ansible.builtin.systemd:
+    name: nginx
+    state: restarted
+    enabled: yes

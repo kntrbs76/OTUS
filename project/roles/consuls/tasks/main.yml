@@ -1,0 +1,12 @@
+---
+- name: Include consul-servers
+  ansible.builtin.include_tasks: consul-servers.yml
+  when: inventory_hostname in groups['consuls']
+
+- name: Include consul-clients
+  ansible.builtin.include_tasks: consul-clients.yml
+  when: inventory_hostname in (groups['lbs'] + groups['bes'])
+
+- name: Include consul-templates
+  ansible.builtin.include_tasks: consul-templates.yml
+  when: inventory_hostname in groups['lbs']

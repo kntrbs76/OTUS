@@ -1,0 +1,11 @@
+---
+- name: Copy ceph.client.admin.keyring, ceph.conf to other ceph servers
+  ansible.builtin.copy:
+    src: "/tmp/fetched/ceph-01/etc/ceph/{{ item.src }}"
+    dest: /etc/ceph
+    owner: root
+    group: root
+    mode: "{{ item.mode }}"
+  loop:
+    - { src: 'ceph.client.admin.keyring', mode: '0600' }
+    - { src: 'ceph.conf', mode: '0644' }

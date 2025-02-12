@@ -1,0 +1,40 @@
+---
+# cp /tmp/fetched/ceph-01/etc/ceph/{ceph.client.admin.keyring,ceph.conf} /etc/ceph
+# chmod 0600 /etc/ceph/ceph.client.admin.keyring
+- name: Copy ceph.client.admin.keyring, ceph.conf to other ceph servers
+  ansible.builtin.copy:
+    src: "/tmp/fetched/ceph-01/etc/ceph/{{ item.src }}"
+    dest: /etc/ceph
+    owner: root
+    group: root
+    mode: "{{ item.mode }}"
+  loop:
+    - { src: 'ceph.client.admin.keyring', mode: '0600' }
+    - { src: 'ceph.conf', mode: '0644' }
+
+# mkdir /var/www
+- name: Create directory /var/www if it does not exist
+  ansible.builtin.file:
+    path: /var/www
+    state: directory
+    #mode: '0755'
+
+# fsid=$(ceph fsid)
+- name: Get cephfs fsid
+  ansible.builtin.command: ceph fsid
+  register: fsid
+
+# echo $fsid
+- name: Print cephfs fsid
+  ansible.builtin.debug:
+    var: fsid.stdout
+
+# mount.ceph admin@$(ceph fsid).cephfs=/ /var/www/
+# echo 'admin@$(ceph fsid).cephfs=/ /mnt/cephfs ceph _netdev 0 0' >> /etc/fstab
+- name: Mount up device by cephfs
+  ansible.posix.mount:
+    path: /var/www/
+    src: "admin@{{ fsid.stdout }}.cephfs=/"
+    fstype: ceph
+    opts: _netdev
+    state: mounted

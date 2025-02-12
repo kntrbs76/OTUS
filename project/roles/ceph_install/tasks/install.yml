@@ -1,0 +1,36 @@
+---
+# dnf install podman lvm2 -y
+- name: Install podman lvm2
+  ansible.builtin.dnf:
+    name:
+      - podman
+      - lvm2
+    state: latest
+
+# systemctl enable podman --now
+- name: Start podman service
+  ansible.builtin.systemd:
+    name: podman
+    state: restarted
+    enabled: yes
+
+# curl --silent --remote-name --location https://download.ceph.com/rpm-18.2.0/el9/noarch/cephadm
+- name: Download cephadm
+  ansible.builtin.get_url:
+    url: https://download.ceph.com/rpm-18.2.0/el9/noarch/cephadm
+    dest: ~/cephadm
+    mode: '0755'
+
+# ~/cephadm add-repo --release reef && ~/cephadm install
+- name: Install ceph
+  ansible.builtin.command: "{{ item }}"
+  loop:
+    - ~/cephadm add-repo --release reef
+    - ~/cephadm install
+    - ~/cephadm install ceph-common
+
+# rm -f ~/cephadm
+- name: Remove file cephadm
+  ansible.builtin.file:
+    path: ~/cephadm
+    state: absent

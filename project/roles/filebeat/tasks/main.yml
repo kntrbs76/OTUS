@@ -1,0 +1,3 @@
+---
+- name: Include filebeat service
+  ansible.builtin.include_tasks: filebeat.yml

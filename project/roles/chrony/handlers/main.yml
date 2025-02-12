@@ -1,0 +1,7 @@
+---
+# systemctl restart chronyd
+- name: Restart chronyd
+  ansible.builtin.service:
+    name: chronyd
+    state: restarted
+    daemon_reload: yes

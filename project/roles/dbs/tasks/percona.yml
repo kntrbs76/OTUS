@@ -1,0 +1,267 @@
+---
+# rpm --import https://www.percona.com/downloads/RPM-GPG-KEY-percona
+- name: install percona key
+  ansible.builtin.rpm_key:
+    key: https://www.percona.com/downloads/RPM-GPG-KEY-percona
+    state: present
+
+
+- name: Install percona repo
+  ansible.builtin.shell: yum install -y https://repo.percona.com/yum/percona-release-latest.noarch.rpm
+
+- name: Update cache
+  ansible.builtin.dnf: 
+    update_cache: yes
+
+# percona-release setup pxc-80
+- name: percona-release setup pxc-80
+  ansible.builtin.shell: echo 'y' | percona-release setup pxc-80
+
+#- name: module disable mysql
+#  ansible.builtin.shell: dnf -y module disable mysql
+
+# dnf install percona-xtradb-cluster -y
+- name: Install packages
+  ansible.builtin.package:
+    name: 
+      - percona-xtradb-cluster
+      - python3-PyMySQL
+    state: latest
+
+# systemctl restart percona
+- name: Restart Percona service
+  ansible.builtin.service:
+    name: mysql
+    state: restarted
+#  run_once: true
+
+- name: Get temporary mysql root password
+  ansible.builtin.shell: grep 'temporary password' /var/log/mysqld.log | awk '{print $NF}' | tail -n 1
+  register: temp_mysql_root_pass
+#  run_once: true
+
+#- ansible.builtin.debug: 
+#    var: temp_mysql_root_pass.stdout
+
+- ansible.builtin.debug: 
+    msg: "{{ temp_mysql_root_pass.stdout }}"
+#  run_once: true
+
+- name: Create .my.cnf file for root user
+  ansible.builtin.copy:
+    dest: "{{ ansible_env.HOME }}/.my.cnf"
+    mode: 0600
+    content: |
+      [client]
+      user={{ mysql_root_user | quote }}
+      password={{ temp_mysql_root_pass.stdout | quote }}
+#  run_once: true
+
+- name: Set new root password
+  ansible.builtin.shell: mysql --connect-expired-password -e "ALTER USER '{{ mysql_root_user }}'@'localhost' IDENTIFIED WITH 'caching_sha2_password' BY '{{ mysql_root_pass }}';"
+  changed_when: false
+  failed_when: false
+
+- name: Change root password in .my.cnf.
+  ansible.builtin.lineinfile:
+    path: "{{ ansible_env.HOME }}/.my.cnf"
+    state: present
+    regexp: '^.?password=*'
+    line: "password={{ mysql_root_pass | quote }}"
+
+# systemctl stop percona
+- name: Stop Percona service
+  ansible.builtin.service:
+    name: mysql
+    state: stopped
+#  run_once: true
+
+- name: Configure /etc/my.cnf.
+  ansible.builtin.lineinfile:
+    path: /etc/my.cnf
+    state: present
+    regexp: "{{ item.key }}"
+    line: "{{ item.value }}"
+  with_items: 
+   - { key: '^wsrep_provider=', value: 'wsrep_provider=/usr/lib64/galera4/libgalera_smm.so' }
+   - { key: '^wsrep_cluster_name=', value: 'wsrep_cluster_name=pxc-cluster' }
+   - { key: '^wsrep_cluster_address=gcomm://', value: 'wsrep_cluster_address=gcomm://{% for host in groups.dbs %}{{ hostvars[host].ansible_host }}{% if not loop.last %},{% endif %}{% endfor %}' }
+   - { key: '^wsrep_node_name=', value: 'wsrep_node_name={{ ansible_hostname }}' }
+   - { key: 'wsrep_node_address=', value: 'wsrep_node_address={{ ansible_host }}' }
+#  run_once: true
+
+- name: Template config file ssl.cnf to /etc/my.cnf.d/
+  ansible.builtin.template:
+    src: "percona/{{ item }}.j2"
+    dest: "/etc/my.cnf.d/{{ item }}"
+  with_items: 
+   - ssl.cnf
+
+- name: Copy mysql certificates from /var/lib/mysql to /tmp
+  ansible.builtin.fetch:
+    src: "/var/lib/mysql/{{ item }}"
+    dest: /tmp/fetched
+  with_items: 
+   - server-key.pem
+   - server-cert.pem
+   - ca.pem
+  when: "ansible_hostname in 'db-01'"
+
+- name: Copy mysql certificates from /tmp to /var/lib/mysql
+  ansible.builtin.copy:
+    src: "/tmp/fetched/db-01/var/lib/mysql/{{ item }}"
+    dest: "/var/lib/mysql/{{ item }}"
+  with_items: 
+   - server-key.pem
+   - server-cert.pem
+   - ca.pem
+  when: "ansible_hostname not in 'db-01'"
+
+# systemctl start mysql@bootstrap.service
+- name: Start mysql@bootstrap service in first db-server
+  ansible.builtin.service:
+    name: mysql@bootstrap
+    state: started
+#  run_once: true
+  when: "ansible_hostname in 'db-01'"
+
+# systemctl start mysql.service
+- name: Start mysql service in other db-servers
+  ansible.builtin.service:
+    name: mysql
+    state: started
+    enabled: true
+#  run_once: true
+  when: "ansible_hostname not in 'db-01'"
+
+- name: Add database
+  block:
+
+  # systemctl stop mysql@bootstrap.service
+  - name: Stop mysql@bootstrap service in first db-server
+    ansible.builtin.service:
+      name: mysql@bootstrap
+      state: stopped
+
+  # systemctl start mysql.service
+  - name: Start mysql service in first db-server
+    ansible.builtin.service:
+      name: mysql
+      state: restarted
+      enabled: true
+
+  # mysql -e "CREATE DATABASE cars;"
+  - name: Create application database
+    community.mysql.mysql_db: 
+      name: "{{ web_db_name }}"
+      state: "present"
+      collation: "{{ web_db_collation }}"
+      login_user: "{{ mysql_root_user }}"
+      login_password: "{{ mysql_root_pass }}"
+
+  # cp percona/cars.sql /tmp/
+  - name: Copy SQL dump file to the server
+    ansible.builtin.copy:
+      src: "percona/{{ web_db_dump_file }}"
+      dest: /tmp
+    when: web_db_dump_file != ""
+
+  # mysql cars < /tmp/cars.sql
+  - name: Dump file into the database
+    community.mysql.mysql_db: 
+      name: "{{ web_db_name }}"
+      state: import
+      target: "/tmp/{{ web_db_dump_file | basename }}"
+      login_user: "{{ mysql_root_user }}"
+      login_password: "{{ mysql_root_pass }}"
+    when: web_db_dump_file != ""
+
+  ## mysql -e "CREATE USER 'myuser'@'%' IDENTIFIED BY 'anotherreallylongP@ssw0rd';"
+  ## mysql -e "GRANT ALL PRIVILEGES ON *.* TO 'myuser'@'%';"
+  ## or
+  ## mysql -e "GRANT ALL PRIVILEGES ON cars.* TO 'myuser'@'%' IDENTIFIED BY 'anotherreallylongP@ssw0rd';"
+  #- name: Create Application user database
+  #  community.mysql.mysql_user: 
+  #    name: "{{ web_db_user }}"
+  #    plugin: "caching_sha2_password"
+  #    plugin_auth_string: "{{ web_db_pass }}"
+  #    #plugin_hash_string: "{{ web_db_pass }}"
+  #    priv: "{{ web_db_name }}.*:ALL"
+  #    host: "{{ web_db_host }}"
+  #    state: present
+  #    login_user: "{{ mysql_root_user }}"
+  #    login_password: "{{ mysql_root_pass }}"
+
+  # mysql -e "CREATE USER 'webadmin'@'%' IDENTIFIED BY 'webadmin@Otus1234';"
+  # mysql -e "GRANT SELECT,UPDATE,INSERT,DELETE ON cars.* TO 'webadmin'@'%' REQUIRE SSL;"
+  # or
+  # mysql -e "GRANT SELECT,UPDATE,INSERT,DELETE ON cars.* TO 'webadmin'@'%' IDENTIFIED BY 'webadmin@Otus1234'; REQUIRE SSL"
+  - name: Create Application user database for web site
+    community.mysql.mysql_user:
+      name: "{{ web_db_user }}"
+      plugin: "caching_sha2_password"
+      plugin_auth_string: "{{ web_db_pass }}"
+      #plugin_hash_string: "{{ web_db_pass }}"
+      priv: "{{ web_db_name }}.*:ALL"
+      #priv: "{{ web_db_name }}.*:ALL,GRANT,REQUIRESSL"
+      #tls_requires:
+      #  x509:
+      host: "{{ web_db_host }}"
+      state: present
+      login_user: "{{ mysql_root_user }}"
+      login_password: "{{ mysql_root_pass }}"
+
+  # CREATE USER 'proxysql'@'%' IDENTIFIED WITH mysql_native_password by 'proxysql@Otus1234';
+  # GRANT USAGE ON *.* TO 'proxysql'@'%';
+  # or
+  # mysql -e "GRANT USAGE ON *.* TO 'proxysql'@'%' IDENTIFIED WITH mysql_native_password BY 'proxysql@Otus1234';"
+  - name: Create Application user database for proxysql (proxysql_user)
+    community.mysql.mysql_user: 
+      name: "{{ proxysql_user }}"
+      plugin: "caching_sha2_password"
+      plugin_auth_string: "{{ proxysql_pass }}"
+      #plugin_hash_string: "{{ proxysql_pass }}"
+      priv: "*.*:USAGE"
+      #host: "{% for host in (groups.lbs + groups.bes) %}{{ hostvars[host].ansible_host }}{% if not loop.last %},{% endif %}{% endfor %}"
+      host: "%"
+      state: present
+      login_user: "{{ mysql_root_user }}"
+      login_password: "{{ mysql_root_pass }}"
+
+  # CREATE USER 'sbuser'@'192.168.70.74' IDENTIFIED BY 'sbpass';   # ip_address['proxysql-01']
+  # GRANT ALL ON *.* TO 'sbuser'@'10.10.10.x';   # ip_address['proxysql-01']
+  - name: Create Application user database for proxysql (sbuser)
+    community.mysql.mysql_user: 
+      name: "{{ sbuser }}"
+      plugin: "caching_sha2_password"
+      plugin_auth_string: "{{ sbuser_pass }}"
+      #plugin_hash_string: "{{ sbuser_pass }}"
+      priv: "*.*:ALL"
+      #host: "{% for host in (groups.lbs + groups.bes) %}{{ hostvars[host].ansible_host }}{% if not loop.last %},{% endif %}{% endfor %}"
+      host: "%"
+      state: present
+      login_user: "{{ mysql_root_user }}"
+      login_password: "{{ mysql_root_pass }}"
+
+  # mysql -e "CREATE DATABASE grafana;"
+  - name: Create application database for grafana
+    community.mysql.mysql_db: 
+      name: "{{ grafana_db_name }}"
+      state: "present"
+      #collation: "{{ db_collation }}"
+      login_user: "{{ mysql_root_user }}"
+      login_password: "{{ mysql_root_pass }}"
+  
+  - name: Create Application user database for grafana
+    community.mysql.mysql_user:
+      name: "{{ grafana_db_user }}"
+      plugin: "caching_sha2_password"
+      plugin_auth_string: "{{ grafana_db_pass }}"
+      #plugin_hash_string: "{{ grafana_db_pass }}"
+      priv: "{{ grafana_db_name }}.*:ALL"
+      host: "{{ grafana_db_host }}"
+      state: present
+      login_user: "{{ mysql_root_user }}"
+      login_password: "{{ mysql_root_pass }}"
+
+  when: "inventory_hostname in 'db-01'"

@@ -1,0 +1,7 @@
+---
+#- name: Include selinux setting
+#  ansible.builtin.include_tasks: selinux.yml
+#  when: inventory_hostname in groups['cephs']
+
+- name: Include install
+  ansible.builtin.include_tasks: install.yml

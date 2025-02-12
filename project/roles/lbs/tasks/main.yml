@@ -1,0 +1,10 @@
+---
+- name: Include selinux setting
+  ansible.builtin.include_tasks: selinux.yml
+  when: ansible_os_family == "RedHat"
+
+- name: Include sysctl config
+  ansible.builtin.include_tasks: sysctl.yml
+
+- name: Include nginx service
+  ansible.builtin.include_tasks: nginx.yml

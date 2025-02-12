@@ -1,0 +1,4 @@
+---
+- name: Include install node_exporter
+  ansible.builtin.include_tasks: node_exporter.yml
+

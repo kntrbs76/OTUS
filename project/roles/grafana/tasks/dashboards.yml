@@ -1,0 +1,43 @@
+---
+- name: Create Dashboard directory.
+  ansible.builtin.file:
+    path: "{{ grafana_dashboard_dir }}"
+    state: directory
+
+- name: Check if dashboards have been downloaded previously.
+  ansible.builtin.stat:
+    path: "{{ grafana_dashboard_dir }}/dashboard_{{ item.dashboard_id }}_rev_{{ item.revision_id }}.json"
+  loop: "{{ grafana_dashboards }}"
+  register: _dashboard_download
+
+- name: Download Grafana dashboards
+  ansible.builtin.get_url:
+    url: "https://grafana.com/api/dashboards/{{ item.item.dashboard_id }}/revisions/{{ item.item.revision_id }}/download"
+    dest: "{{ grafana_dashboard_dir }}/dashboard_{{ item.item.dashboard_id }}_rev_{{ item.item.revision_id }}.json"
+    mode: 0644
+  loop: "{{ _dashboard_download.results }}"
+  notify: restart_grafana
+  when: not item.stat.exists
+
+- name: Set the correct data source name in the dashboard
+  ansible.builtin.replace:
+    dest: "{{ grafana_dashboard_dir }}/dashboard_{{ item.dashboard_id }}_rev_{{ item.revision_id }}.json"
+    regexp: '"(?:\${)?DS_[A-Z0-9_-]+(?:})?"'
+    replace: '"{{ item.datasource }}"'
+  loop: "{{ grafana_dashboards }}"
+  notify: restart_grafana
+
+- name: Create dashboard file.
+  ansible.builtin.template:
+    src: grafana/dashboard.yml.j2
+    dest: "{{ grafana_config_dir }}/provisioning/dashboards/ansible_dashboard.yml"
+  notify: restart_grafana
+
+- name: Set the dashboard as the default in grafana config file and restart grafana
+  ansible.builtin.replace:
+    dest: "{{ grafana_config_dir }}/grafana.ini"
+    regexp: '(;default_home_dashboard_path =)'
+    replace: 'default_home_dashboard_path = {{ grafana_dashboard_dir }}/dashboard_{{ item.dashboard_id  }}_rev_{{ item.revision_id }}.json'
+  when: "{{ item.default }}"
+  loop: "{{ grafana_dashboards }}"
+  notify: restart_grafana

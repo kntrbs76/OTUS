@@ -1,0 +1,5 @@
+---
+# Node_exporter
+node_exporter_version: 1.7.0
+node_exporter_db_dir: /home/node_exporter
+go_arch: amd64

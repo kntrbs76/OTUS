@@ -1,0 +1,10 @@
+---
+# Grafana
+grafana_version: 10.3.3-1
+grafana_arch: x86_64
+
+grafana_db_name: "grafana"
+grafana_db_user: "grafana"
+grafana_db_pass: "grafana@Otus1234"
+#grafana_db_host: "{% for host in groups.lbs %}{{ hostvars[host].ansible_host }}{% if not loop.last %},{% endif %}{% endfor %}"
+grafana_db_host: "10.10.10.%"

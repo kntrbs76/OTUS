@@ -1,0 +1,26 @@
+---
+# dnf install nginx -y
+- name: Install nginx
+  ansible.builtin.dnf:
+    name:
+      - nginx
+    state: latest
+
+# cp ./nginx/conf.d/upstreams.conf.j2 /etc/nginx/conf.d/upstreams.conf
+# cp ./nginx/sites-available/upstreams.j2 /etc/nginx/sites-available/upstreams
+- name: Template nginx config files
+  ansible.builtin.template:
+    src: "nginx/{{ item }}.j2"
+    dest: "/etc/nginx/{{ item }}"
+  loop:
+    #- conf.d/upstreams
+    - nginx.conf
+  notify:
+    - Restart nginx
+
+# systemctl enable nginx --now
+- name: Start nginx service
+  ansible.builtin.systemd:
+    name: nginx
+    state: restarted
+    enabled: yes

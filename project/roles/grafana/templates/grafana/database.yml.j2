@@ -1,0 +1,15 @@
+apiVersion: 1
+
+datasources:
+  - name: MySQL
+    type: mysql
+    url: 127.0.0.1:6033
+    user: "{{ grafana_db_user }}"
+    jsonData:
+      database: "{{ grafana_db_name }}"
+      maxOpenConns: 100 # Grafana v5.4+
+      maxIdleConns: 100 # Grafana v5.4+
+      maxIdleConnsAuto: true # Grafana v9.5.1+
+      connMaxLifetime: 14400 # Grafana v5.4+
+    secureJsonData:
+      password: "{{ grafana_db_pass }}"

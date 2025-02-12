@@ -1,0 +1,27 @@
+---
+- name: Include configure selinux
+  ansible.builtin.include_tasks: selinux.yml
+
+# tasks file for prometheus
+
+#- name: Gather variables for each operating system
+#  include_vars: "{{ item }}"
+#  with_first_found:
+#    - "{{ ansible_distribution | lower }}-{{ ansible_distribution_major_version }}.yml"
+#    - "{{ ansible_distribution | lower }}.yml"
+#    - "{{ ansible_os_family | lower }}-{{ ansible_distribution_major_version | lower }}.yml"
+#    - "{{ ansible_os_family | lower }}.yml"
+
+#- include: preflight.yml
+
+- name: Include install prometheus
+  ansible.builtin.include_tasks: prometheus.yml
+  when: inventory_hostname in groups['lbs']
+
+#- name: Include install grafana
+#  ansible.builtin.include_tasks: grafana.yml
+#  when: inventory_hostname in groups['lbs']
+
+#- name: Include install node_exporter
+#  ansible.builtin.include_tasks: node_exporter.yml
+#  when: "'servers' in group_names"

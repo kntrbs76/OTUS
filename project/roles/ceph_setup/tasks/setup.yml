@@ -1,0 +1,80 @@
+---
+# cp initial-config-primary-cluster.yaml ~/
+- name: Copy bootstrap ceph config file
+  ansible.builtin.copy:
+    src: initial-config-primary-cluster.yaml
+    dest: ~/initial-config-primary-cluster.yaml
+
+# cephadm bootstrap
+- name: Bootstrap ceph config file and deploy ceph cluster
+  ansible.builtin.command: "{{ item }}"
+  loop:
+    - /usr/sbin/cephadm bootstrap --mon-ip={{ hostvars['ceph-01'].ansible_host }} --apply-spec=/root/initial-config-primary-cluster.yaml --initial-dashboard-user=otus --initial-dashboard-password=otus --dashboard-password-noupdate --allow-fqdn-hostname --allow-overwrite --ssh-user almalinux --ssh-private-key /home/almalinux/.ssh/id_rsa --ssh-public-key /home/almalinux/.ssh/id_rsa.pub
+    - /usr/bin/ceph config set mon public_network 10.10.10.0/24
+    - /usr/bin/ceph orch restart mon
+    - /usr/bin/ceph telemetry enable channel perf
+    - /usr/bin/ceph telemetry on --license sharing-1-0
+  run_once: true
+  ignore_errors: true
+
+#- name: Wait a minute
+#  pause:
+#    seconds: 180
+
+#- name: Setup cephfs
+#  ansible.builtin.shell: >
+#    while [ $(ceph -s | grep HEALTH_OK -c) -lt 1 ]; do echo -n .; sleep 1; done;
+#    ceph osd pool create cephfs_data 128;
+#    ceph osd pool set cephfs_data size 3;
+#    while [ $(ceph -s | grep creating -c) -gt 0 ]; do echo -n .; sleep 1; done;
+#    ceph osd pool set cephfs_data bulk true;
+#    ceph osd pool create cephfs_meta 128;
+#    ceph osd pool set cephfs_meta size 3;
+#    while [ $(ceph -s | grep creating -c) -gt 0 ]; do echo -n .; sleep 1; done;
+#    ceph fs new cephfs cephfs_meta cephfs_data;
+#  run_once: true
+
+- name: Setup cephfs 1
+#  ansible.builtin.shell: while [ $(ceph -s | grep HEALTH_OK -c) -lt 1 ]; do echo -n .; sleep 1; done
+  ansible.builtin.shell: while [ $(ceph osd ls | wc -l) -ne 9 ]; do echo -n .; sleep 10; done
+  run_once: true
+
+- name: Setup cephfs 2
+  ansible.builtin.command: ceph osd pool create cephfs_data 128
+  run_once: true
+
+- name: Setup cephfs 3
+  ansible.builtin.command: ceph osd pool set cephfs_data size 3
+  run_once: true
+
+- name: Setup cephfs 4
+  ansible.builtin.shell: while [ $(ceph -s | grep creating -c) -gt 0 ]; do echo -n .; sleep 10; done
+  run_once: true
+
+- name: Setup cephfs 5
+  ansible.builtin.command: ceph osd pool set cephfs_data bulk true
+  run_once: true
+
+- name: Setup cephfs 6
+  ansible.builtin.command: ceph osd pool create cephfs_meta 128
+  run_once: true
+
+- name: Setup cephfs 7
+  ansible.builtin.command: ceph osd pool set cephfs_meta size 3
+  run_once: true
+
+- name: Setup cephfs 8
+  ansible.builtin.shell: while [ $(ceph -s | grep creating -c) -gt 0 ]; do echo -n .; sleep 10; done
+  run_once: true
+
+- name: Setup cephfs 9
+  ansible.builtin.command: ceph fs new cephfs cephfs_meta cephfs_data
+  run_once: true
+
+- name: Fetch ceph.client.admin.keyring, ceph.conf to /tmp/fetched
+  ansible.builtin.fetch:
+    src: "/etc/ceph/{{ item }}"
+    dest: /tmp/fetched
+  loop:
+    - ceph.client.admin.keyring
+    - ceph.conf

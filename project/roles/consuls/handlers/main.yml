@@ -1,0 +1,14 @@
+---
+# systemctl reload consul --now
+- name: reload consul
+  ansible.builtin.systemd:
+    name: consul
+    state: reloaded
+    enabled: true
+
+# systemctl reload consul-template --now
+- name: reload consul-template
+  ansible.builtin.systemd:
+    name: consul-template
+    state: reloaded
+    enabled: true

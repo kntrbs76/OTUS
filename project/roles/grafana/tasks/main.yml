@@ -1,0 +1,12 @@
+---
+#- name: Include configure selinux
+#  ansible.builtin.include_tasks: selinux.yml
+
+- name: Include proxysql service
+  ansible.builtin.include_tasks: proxysql.yml
+
+- name: Include install grafana
+  ansible.builtin.include_tasks: grafana.yml
+
+- name: Include install dashboards
+  ansible.builtin.include_tasks: dashboards.yml

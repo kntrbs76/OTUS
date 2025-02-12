@@ -1,0 +1,30 @@
+---
+grafana_config_dir: "/etc/grafana"
+grafana_dashboard_dir: "{{ grafana_config_dir }}/dashboard"
+
+# Listen port for Grafana Web UI
+grafana_listen_port: 3000
+
+# default admin credentials for web UI
+grafana_admin_user: admin
+grafana_admin_pass: admin@Otus1234
+
+# Default datasource (assuming Prometheus running locally)
+grafana_datasources: []
+#  - name: prometheus
+#    type: prometheus
+#    url: http://127.0.0.1:9090
+
+grafana_dashboards: 
+#  - dashboard_id: '4271'
+#    revision_id: '3'
+#    datasource: 'Prometheus'
+#    default: true
+  - dashboard_id: '1860'
+    revision_id: '33'
+    datasource: 'Prometheus'
+    default: false
+#  - dashboard_id: '358'
+#    revision_id: '1'
+#    datasource: 'Prometheus'
+#    default: false
